@@ -119,5 +119,6 @@ int main(int argc, char **argv) {
     }
     deleteAll(&head);
     free(inFileNames);
+    shm_unlink(SNAME);
     return 0;
 }
