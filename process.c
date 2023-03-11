@@ -117,6 +117,7 @@ int main(int argc, char **argv) {
         fprintf(outFile,"%s %d\n", pair->key, pair->data);
         pair = pair->next;
     }
+    deleteAll(&head);
     free(inFileNames);
     return 0;
 }
