@@ -76,8 +76,6 @@ int main(int argc, char **argv) {
             struct node *link = head;
             for (int j = 0; j < K; ++j) {
                 // copy to the shared memory
-                printf("%s\n",link->key);
-                printf("%d\n",link->data);
                 memoryPtr[j].count = link->data;
                 strcpy(memoryPtr[j].word, link->key);
 
