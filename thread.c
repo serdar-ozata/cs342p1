@@ -29,7 +29,7 @@ void *processFile(void *arg) {
     FILE *fptr = fopen(threadArgs->fileName, "r");
     if (fptr == NULL) {
         printf("Error! couldn't open file named %s.", threadArgs->fileName);
-        exit(1);
+        pthread_exit(NULL);
     }
 
     // get the allocated memory position of this child process
