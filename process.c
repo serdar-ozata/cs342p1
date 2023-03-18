@@ -8,8 +8,9 @@
 #include <sys/wait.h>
 #include <ctype.h>
 #define SNAME "shmname"
-
 #include "linkedlist.h"
+
+int getNextWord(FILE* fPtr, char* word);
 
 struct WordCount {
     char word[64];
@@ -57,7 +58,7 @@ int main(int argc, char **argv) {
             // read and fill the linked list
             char word[64];
             struct node *head = NULL;
-            while (fscanf(fptr, " %63s", word) == 1) {
+            while (getNextWord(fptr, word)) {
                 // convert to the upper-cased version
                 int k = 0;
                 while (word[k]) {
@@ -67,11 +68,7 @@ int main(int argc, char **argv) {
                 }
                 // insert
                 if (head) {
-                    struct node *res = find(head, word);
-                    if (res)
-                        res->data++;
-                    else
-                        insert(&head, word, 1);
+                    insertOrAdd(&head, word, 1);
                 } else
                     head = create(word, 1);
             }
@@ -79,6 +76,8 @@ int main(int argc, char **argv) {
             struct node *link = head;
             for (int j = 0; j < K; ++j) {
                 // copy to the shared memory
+                printf("%s\n",link->key);
+                printf("%d\n",link->data);
                 memoryPtr[j].count = link->data;
                 strcpy(memoryPtr[j].word, link->key);
 
@@ -99,13 +98,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < K * inFileCount; ++i) {
         struct WordCount pair = rootPtr[i];
         if (head) {
-            struct node *res = find(head, pair.word);
-            if (res) {
-                res->data += pair.count;
-            }
-            else {
-                insert(&head, pair.word, pair.count);
-            }
+            insertOrAdd(&head, pair.word, pair.count);
         } else {
             head = create(pair.word, pair.count);
         }

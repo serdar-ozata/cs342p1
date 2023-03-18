@@ -8,7 +8,9 @@
 #include <sys/wait.h>
 #include <ctype.h>
 #include <pthread.h>
+
 #define SNAME "shmname"
+
 #include "linkedlist.h"
 
 struct WordCount {
@@ -21,8 +23,9 @@ struct ThreadArgs {
     struct WordCount *rootPtr;
 };
 
-struct WordCount* shMem;
+struct WordCount *shMem;
 int K;
+
 void *processFile(void *arg) {
     struct ThreadArgs *threadArgs = (struct ThreadArgs *) arg;
     // open file
@@ -48,11 +51,7 @@ void *processFile(void *arg) {
         }
         // insert
         if (head) {
-            struct node *res = find(head, word);
-            if (res)
-                res->data++;
-            else
-                insert(&head, word, 1);
+            insertOrAdd(&head, word, 1);
         } else
             head = create(word, 1);
     }
@@ -104,7 +103,7 @@ int main(int argc, char **argv) {
     // create the threads
     pthread_t threads[inFileCount];
     for (int i = 0; i < inFileCount; ++i) {
-        struct ThreadArgs * t= malloc(sizeof(struct ThreadArgs));
+        struct ThreadArgs *t = malloc(sizeof(struct ThreadArgs));
         t->rootPtr = shMem + K * i;
         t->fileName = inFileNames[i];
         pthread_create(&threads[i], NULL, processFile, t);
@@ -118,23 +117,17 @@ int main(int argc, char **argv) {
     for (int i = 0; i < K * inFileCount; ++i) {
         struct WordCount pair = shMem[i];
         if (head) {
-            struct node *res = find(head, pair.word);
-            if (res) {
-                res->data += pair.count;
-            }
-            else {
-                insert(&head, pair.word, pair.count);
-            }
+            insertOrAdd(&head, pair.word, pair.count);
         } else {
             head = create(pair.word, pair.count);
         }
     }
 
     struct node *pair = head;
-    FILE* outFile = fopen(outPath, "w");
+    FILE *outFile = fopen(outPath, "w");
     // write K top elements
     for (int i = 0; i < K; ++i) {
-        fprintf(outFile,"%s %d\n", pair->key, pair->data);
+        fprintf(outFile, "%s %d\n", pair->key, pair->data);
         pair = pair->next;
     }
 

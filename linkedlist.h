@@ -10,3 +10,4 @@ void deleteAll(struct node **head);
 int isEmpty(struct node *head);
 int length(struct node *head);
 struct node *find(struct node *head, char key[64]);
+void insertOrAdd(struct node **headPtr, char key[64], int value);
