@@ -18,14 +18,13 @@ struct WordCount {
 
 struct ThreadArgs {
     char *fileName;
-    int blockNum;
     struct WordCount *rootPtr;
-    int K;
 };
 
+struct WordCount* shMem;
+int K;
 void *processFile(void *arg) {
     struct ThreadArgs *threadArgs = (struct ThreadArgs *) arg;
-
     // open file
     FILE *fptr = fopen(threadArgs->fileName, "r");
     if (fptr == NULL) {
@@ -34,7 +33,7 @@ void *processFile(void *arg) {
     }
 
     // get the allocated memory position of this child process
-    struct WordCount *memoryPtr = threadArgs->rootPtr + threadArgs->K * threadArgs->blockNum;
+    struct WordCount *memoryPtr = threadArgs->rootPtr;
 
     // read and fill the linked list
     char word[64];
@@ -60,7 +59,7 @@ void *processFile(void *arg) {
 
     // retrieve K top elements
     struct node *link = head;
-    for (int j = 0; j < threadArgs->K; ++j) {
+    for (int j = 0; j < K; ++j) {
         // copy to the shared memory
         memoryPtr[j].count = link->data;
         strcpy(memoryPtr[j].word, link->key);
@@ -72,13 +71,13 @@ void *processFile(void *arg) {
     if (head) {
         deleteAll(&head);
     }
-
+    free(arg);
     pthread_exit(NULL);
 }
 
 int main(int argc, char **argv) {
     // parse arguments
-    int K = atoi(argv[1]);
+    K = atoi(argv[1]);
     char *outPath = argv[2];
     int inFileCount = atoi(argv[3]);
     char **inFileNames = malloc(inFileCount * sizeof(char *));
@@ -91,28 +90,33 @@ int main(int argc, char **argv) {
     const int BLOCK_SIZE = sizeof(struct WordCount) * K;
     // KxN
     const int SIZE = BLOCK_SIZE * inFileCount;
-
-    int shm_fd;
-    struct WordCount *rootPtr;
-    shm_fd = shm_open(SNAME, O_CREAT | O_RDWR, 0666);
-    ftruncate(shm_fd, SIZE); // set size of shared memory
-    rootPtr = mmap(0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (rootPtr == MAP_FAILED) {
-        printf("Map failed\n");
-        return -1;
-    }
+    shMem = malloc(SIZE);
+//    int shm_fd;
+//    struct WordCount *rootPtr;
+//    shm_fd = shm_open(SNAME, O_CREAT | O_RDWR, 0666);
+//    ftruncate(shm_fd, SIZE); // set size of shared memory
+//    rootPtr = mmap(0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+//    if (rootPtr == MAP_FAILED) {
+//        printf("Map failed\n");
+//        return -1;
+//    }
 
     // create the threads
     pthread_t threads[inFileCount];
-    pthread_attr_t attr;    // Default thread attributes
     for (int i = 0; i < inFileCount; ++i) {
-        pthread_create(&threads[i], &attr, processFile, NULL);
+        struct ThreadArgs * t= malloc(sizeof(struct ThreadArgs));
+        t->rootPtr = shMem + K * i;
+        t->fileName = inFileNames[i];
+        pthread_create(&threads[i], NULL, processFile, t);
     }
-
+    // Join all the threads created
+    for (int i = 0; i < inFileCount; ++i) {
+        pthread_join(threads[i], NULL);
+    }
     // create the main sorted linked list
     struct node *head = NULL;
     for (int i = 0; i < K * inFileCount; ++i) {
-        struct WordCount pair = rootPtr[i];
+        struct WordCount pair = shMem[i];
         if (head) {
             struct node *res = find(head, pair.word);
             if (res) {
@@ -134,12 +138,9 @@ int main(int argc, char **argv) {
         pair = pair->next;
     }
 
-    // Join all the threads created
-    for (int i = 0; i < inFileCount; ++i) {
-        pthread_join(threads[i], NULL);
-    }
 
     deleteAll(&head);
     free(inFileNames);
+    free(shMem);
     return 0;
 }
